@@ -15,7 +15,9 @@ sequenceDiagram
         WF->>SRC: execute_activity(fetch_steam)
         WF->>SRC: execute_activity(fetch_appstore)
     end
-    Note over WF,SRC: each source: own retry policy + timeout;<br/>a source that exhausts retries is recorded,<br/>not fatal — only all-sources-failed aborts
+    Note over WF,SRC: each source: own retry policy + timeout.
+    Note over WF,SRC: a source that exhausts retries is recorded,
+    Note over WF,SRC: not fatal — only all-sources-failed aborts
     SRC-->>WF: reviews[] + failed_sources[]
 
     par Phase 2 — fan out scoring over every review
