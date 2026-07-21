@@ -7,7 +7,8 @@ from temporalio.worker import Worker
 
 from activities import (
     aggregate_scores,
-    analyze_sentiment,
+    analyze_sentiment_llm,
+    analyze_sentiment_vader,
     fetch_appstore,
     fetch_lemmy,
     fetch_steam,
@@ -34,7 +35,8 @@ async def main() -> None:
                 fetch_lemmy,
                 fetch_steam,
                 fetch_appstore,
-                analyze_sentiment,
+                analyze_sentiment_vader,
+                analyze_sentiment_llm,
                 aggregate_scores,
             ],
             activity_executor=activity_executor,

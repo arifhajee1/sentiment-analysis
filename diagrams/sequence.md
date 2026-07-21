@@ -5,7 +5,7 @@ sequenceDiagram
     participant Client as starter.py
     participant WF as ProductSentimentWorkflow
     participant SRC as fetch_lemmy / fetch_steam / fetch_appstore (parallel)
-    participant AN as analyze_sentiment (N, parallel)
+    participant AN as analyze_sentiment_vader / _llm (N each, parallel)
     participant AG as aggregate_scores
 
     Client->>WF: start_workflow(query, max_reviews)
@@ -20,11 +20,12 @@ sequenceDiagram
     Note over WF,SRC: not fatal — only all-sources-failed aborts
     SRC-->>WF: reviews[] + failed_sources[]
 
-    par Phase 2 — fan out scoring over every review
-        WF->>AN: execute_activity(analyze_sentiment, r1)
-        WF->>AN: execute_activity(analyze_sentiment, rN)
+    par Phase 2 — score every review twice, concurrently
+        WF->>AN: execute_activity(analyze_sentiment_vader, r1..rN)
+        WF->>AN: execute_activity(analyze_sentiment_llm, r1..rN)
     end
-    AN-->>WF: compound scores (fan-in via asyncio.gather)
+    Note over WF,AN: VADER always scores; the LLM fan-out uses<br/>return_exceptions so a failed/absent LLM score<br/>falls back to None (VADER score is kept)
+    AN-->>WF: (vader_score, llm_score or None) per review
 
     opt Phase 3 — caller adds manual reviews
         Client->>WF: signal add_more_reviews([...])

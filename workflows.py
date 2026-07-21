@@ -8,7 +8,8 @@ from temporalio.exceptions import ApplicationError
 with workflow.unsafe.imports_passed_through():
     from activities import (
         aggregate_scores,
-        analyze_sentiment,
+        analyze_sentiment_llm,
+        analyze_sentiment_vader,
         fetch_appstore,
         fetch_lemmy,
         fetch_steam,
@@ -118,17 +119,40 @@ class ProductSentimentWorkflow:
         return reviews, failed
 
     async def _score_reviews(self, reviews: list[Review]) -> None:
-        scores = await asyncio.gather(*(
-            workflow.execute_activity(
-                analyze_sentiment,
-                r.text,
-                start_to_close_timeout=timedelta(seconds=10),
-                retry_policy=ANALYZE_RETRY_POLICY,
-            )
-            for r in reviews
-        ))
+        # Score every review twice, concurrently: VADER (local, always succeeds)
+        # and the LLM (network call, may fail per-review). return_exceptions on
+        # the LLM fan-out lets a single failure fall back to None without losing
+        # that review's VADER score or aborting the batch.
+        vader_scores, llm_results = await asyncio.gather(
+            asyncio.gather(*(
+                workflow.execute_activity(
+                    analyze_sentiment_vader,
+                    r.text,
+                    start_to_close_timeout=timedelta(seconds=10),
+                    retry_policy=ANALYZE_RETRY_POLICY,
+                )
+                for r in reviews
+            )),
+            asyncio.gather(
+                *(
+                    workflow.execute_activity(
+                        analyze_sentiment_llm,
+                        r.text,
+                        start_to_close_timeout=timedelta(seconds=30),
+                        retry_policy=ANALYZE_RETRY_POLICY,
+                    )
+                    for r in reviews
+                ),
+                return_exceptions=True,
+            ),
+        )
         self._scored.extend(
-            ScoredReview(source=r.source, score=s) for r, s in zip(reviews, scores)
+            ScoredReview(
+                source=r.source,
+                vader_score=v,
+                llm_score=None if isinstance(llm, BaseException) else llm,
+            )
+            for r, v, llm in zip(reviews, vader_scores, llm_results)
         )
 
     @workflow.signal
@@ -142,12 +166,17 @@ class ProductSentimentWorkflow:
     @workflow.query
     def get_progress(self) -> dict:
         scored = len(self._scored)
-        running_average = (
-            round(sum(sr.score for sr in self._scored) / scored, 4) if scored else None
+        vader_average = (
+            round(sum(sr.vader_score for sr in self._scored) / scored, 4) if scored else None
+        )
+        llm_scored = [sr.llm_score for sr in self._scored if sr.llm_score is not None]
+        llm_average = (
+            round(sum(llm_scored) / len(llm_scored), 4) if llm_scored else None
         )
         return {
             "reviews_scored": scored,
-            "running_average": running_average,
+            "vader_running_average": vader_average,
+            "llm_running_average": llm_average,
             "accepting_more": not self._closed,
             "failed_sources": self._failed_sources,
         }

@@ -1,3 +1,4 @@
 temporalio==1.30.0
 vaderSentiment==3.3.2
 requests==2.34.2
+anthropic==0.117.0

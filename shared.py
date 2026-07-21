@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 # Shared data types passed across the workflow <-> activity boundary. Kept in
 # their own module (no heavy imports, no side effects) so both the workflow
@@ -16,7 +17,10 @@ class Review:
 
 @dataclass
 class ScoredReview:
-    """A review's sentiment score, retaining its source for per-source rollups."""
+    """A review scored by both engines, retaining its source for per-source
+    rollups. `llm_score` is None when the LLM scorer was unavailable or failed
+    for this review (VADER is local and always produces a score)."""
 
     source: str
-    score: float
+    vader_score: float
+    llm_score: Optional[float]
