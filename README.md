@@ -21,12 +21,6 @@ exercise Temporal, not to fight bot walls:
 | **Steam** | `store.steampowered.com/appreviews` | Game reviews |
 | **App Store** | `itunes.apple.com/.../customerreviews` | Mobile app reviews |
 
-> **Why Lemmy instead of Reddit?** Reddit now IP-blocks unauthenticated traffic
-> (hard `403` regardless of User-Agent), so its free JSON endpoint can't be used
-> without registering a Reddit OAuth app — exactly the kind of live-auth
-> integration this exercise says to skip. Lemmy is the federated, no-auth
-> equivalent and fills the same "social chatter" role.
-
 Each source resolves the query itself (Steam/App Store look up an app id first),
 so one query string like `"minecraft"` fans out to all three.
 
