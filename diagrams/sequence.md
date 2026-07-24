@@ -24,7 +24,7 @@ sequenceDiagram
         WF->>AN: execute_activity(analyze_sentiment_vader, r1..rN)
         WF->>AN: execute_activity(analyze_sentiment_llm, r1..rN)
     end
-    Note over WF,AN: VADER always scores; the LLM fan-out uses
+    Note over WF,AN: VADER always scores. The LLM fan-out uses
     Note over WF,AN: return_exceptions so a failed/absent LLM score
     Note over WF,AN: falls back to None (VADER score is kept)
     AN-->>WF: (vader_score, llm_score or None) per review
